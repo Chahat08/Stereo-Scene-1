@@ -17,7 +17,7 @@ int CURSOR_YPOS = INT_MIN;
 
 int NUM_CUBES = 16;
 
-const float IPD = 0.25f;
+const float IPD = 0.5f;
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
@@ -88,66 +88,25 @@ void createProjectionMatrix(Shader& shader, float near = 0.1f, float far = 100.0
 	shader.setUniformMatrix4float("projection", projection);
 }
 
-void createAllTransformations(Shader& shader, float ipd, float near, float far, float fovDeg, std::vector<glm::vec3> positions, std::vector<glm::vec3> axes) {
-	const float radius = 30.0f;
-	float camX = sin(glfwGetTime()) * radius;
-	float camZ = cos(glfwGetTime()) * radius;
-
-
-	float fovby2 = glm::radians(fovDeg / 2.0f);
-
-	float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
-		left = -near * aspect, right = -left, top = near * tan(fovby2), bottom = -top;
-
-	glm::mat4 view(1.0f);
-	glm::mat4 projection(1.0f);
+void createAllTransformationsAndEnableQuadBuffer(Shader& shader, float ipd, float near, float far, float fovDeg, std::vector<glm::vec3> positions, std::vector<glm::vec3> axes) {
+	createProjectionMatrix(shader, near, far, fovDeg);
 
 	// LEFT EYE
 	glDrawBuffer(GL_BACK_LEFT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	view = glm::lookAt(
-		glm::vec3((camX -= ipd / 2.0), 0.0f, camZ),
-		glm::vec3((-ipd / 2.0), 0.0f, -near),
-		glm::vec3(0.0f, 1.0f, 0.0f)
-	);
-	shader.setUniformMatrix4float("view", view);
-
-	projection = glm::frustum(
-		-(near * aspect * tan(fovby2) - ipd / 2.0f), // left
-		(near * aspect * tan(fovby2) + ipd / 2.0f), // right
-		bottom,
-		top,
-		near,
-		far
-	);
-	shader.setUniformMatrix4float("projection", projection);
-
+	createViewMatrix(shader, ipd, false);
 	createModelMatrices(shader, positions, axes);
+
 	glFlush();
 
 	// RIGHT EYE
 	glDrawBuffer(GL_BACK_RIGHT);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	view = glm::lookAt(
-		glm::vec3((camX += ipd / 2.0), 0.0f, camZ),
-		glm::vec3((ipd / 2.0), 0.0f, -near),
-		glm::vec3(0.0f, 1.0f, 0.0f)
-	);
-	shader.setUniformMatrix4float("view", view);
-
-	projection = glm::frustum(
-		-(near * aspect * tan(fovby2) + ipd / 2.0f), // left
-		(near * aspect * tan(fovby2) - ipd / 2.0f), // right
-		bottom,
-		top,
-		near,
-		far
-	);
-	shader.setUniformMatrix4float("projection", projection);
-
+	createViewMatrix(shader, ipd, true);
 	createModelMatrices(shader, positions, axes);
+
 	glFlush();
 }
 
@@ -245,23 +204,17 @@ int main() {
 		shader.use();
 		glBindVertexArray(VAO);
 
-		if (frame++ % 2) 
-			createViewMatrix(shader, IPD, false);
-		else 
-			createViewMatrix(shader, IPD, true);
-
-		createProjectionMatrix(shader, 1.0f, 100.0f, 45.0f);
-		createModelMatrices(shader, positions, axes);
+		createAllTransformationsAndEnableQuadBuffer(shader, IPD, 0.1f, 100.0f, 45.0, positions, axes);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 
+		frame++;
 		if (glfwGetTime() - lastTime > 1.0f) {
 			std::cout << "Current FPS: " << frame << std::endl;
 			frame = 0;
 			lastTime += 1.0;
 		}
-		//frame++;
 	}
 
 	glfwTerminate();
