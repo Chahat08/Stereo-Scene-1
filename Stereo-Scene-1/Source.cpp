@@ -65,7 +65,7 @@ void processInput(GLFWwindow* window) {
 void createModelMatrices(Shader& shader, std::vector<glm::vec3> positions, std::vector<glm::vec3> axes) {
 	for (int i = 0; i < 1; ++i) {
 		glm::mat4 model(1.0f);
-		model = glm::translate(model, glm::vec3(0.0, 0.0, 10.0));
+		model = glm::translate(model, glm::vec3(0.0, 0.0, 0.0));
 		//model = glm::rotate(model, (float)glfwGetTime(), axes[i]);
 
 		shader.setUniformMatrix4float("model", model);
@@ -80,7 +80,7 @@ void createViewMatrix(Shader& shader, float ipd, bool rightEye = false) {
 	camZ = cos(glfwGetTime()) * radius;
 	glm::mat4 view(1.0f);
 	view = glm::lookAt(
-		glm::vec3(0.0f, 0.0f, -1.0f),
+		glm::vec3(0.0f, 0.0f, -10.0f),
 		glm::vec3(0.0f, 0.0f, 0.0f),
 		glm::vec3(0.0f, 1.0f, 0.0f)
 	);
@@ -100,15 +100,16 @@ void createHeadMatrix(Shader& shader, glm::vec3 translation, const float rotatio
 void createProjectionMatrix(Shader& shader, float near = 0.5f, float far = 100.0f, float fovDeg = 45.0f) {
 	glm::mat4 projection(1.0f);
 
-	float fov = glm::radians(2 * atan(SCREEN_DIMENSION_HEIGHT / (2 * 1.0f)));
+	float aspectRatio = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
+	float fov = 2 * atan(SCREEN_DIMENSION_HEIGHT / (2 * 0.1f)) / aspectRatio;
 	projection = glm::perspective(
 		fov,
-		(float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
+		aspectRatio,
 		0.1f,
 		100.0f
 	);
 
-	std::cout << fov <<", "<<SCREEN_HEIGHT << std::endl;
+	std::cout << glm::degrees(fov) <<", "<<SCREEN_HEIGHT << std::endl;
 
 	//projection = glm::frustum(
 
@@ -166,6 +167,9 @@ int main(int argc, char* argv[]) {
 	SCREEN_WIDTH = std::stoi(argv[1]);
 	SCREEN_HEIGHT = std::stoi(argv[2]);
 	SCREEN_DIMENSION_HEIGHT = std::stof(argv[3]);
+
+	std::cout << SCREEN_WIDTH << std::endl;
+	std::cout << SCREEN_HEIGHT << std::endl;
 
 	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Title", NULL, NULL);
 	//GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Title", NULL, NULL);
