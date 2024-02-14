@@ -1,6 +1,9 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
 #include <iostream>
 #include <random>
 #include <vector>
@@ -17,7 +20,9 @@ int CURSOR_YPOS = INT_MIN;
 
 int NUM_CUBES = 16;
 
-const float IPD = 0.5f;
+const float IPD = 0.5f; // 0.065
+glm::vec3 HEAD_POSITION = glm::vec3(0.0, 0.0, -0.75); // let the head be 0.75 m from the screen
+const bool RENDER_TOP_HALF = true;
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
 	glViewport(0, 0, width, height);
@@ -62,24 +67,35 @@ void createModelMatrices(Shader& shader, std::vector<glm::vec3> positions, std::
 	}
 }
 
+float camX = 0.0f, camZ = 0.0f;
 void createViewMatrix(Shader& shader, float ipd, bool rightEye = false) {
 	const float radius = 10.0f;
-	float camX = sin(glfwGetTime()) * radius;
-	float camZ = cos(glfwGetTime()) * radius;
+	camX = sin(glfwGetTime()) * radius + (rightEye ? ipd / 2.0 : -ipd / 2.0);
+	camZ = cos(glfwGetTime()) * radius;
 	glm::mat4 view(1.0f);
 	view = glm::lookAt(
-		glm::vec3((rightEye ? camX += ipd / 2.0 : camX -= ipd / 2.0), 0.0f, camZ),
+		glm::vec3(camX, 0.0f, camZ),
 		glm::vec3(0.0f, 0.0f, 0.0f),
 		glm::vec3(0.0f, 1.0f, 0.0f)
 	);
 	shader.setUniformMatrix4float("view", view);
 }
 
+void createHeadMatrix(Shader& shader, glm::vec3 translation, const float rotationAngle, glm::vec3 rotationAxis) {
+	glm::mat4 head(1.0f);
+
+	head = glm::lookAt(HEAD_POSITION, 
+		glm::vec3(camX, 0.0f, camZ), 
+		glm::vec3(0.0f, 1.0f, 0.0f));
+
+	shader.setUniformMatrix4float("head", head);
+}
+
 void createProjectionMatrix(Shader& shader, float near = 0.1f, float far = 100.0f, float fovDeg = 45.0f) {
 	glm::mat4 projection(1.0f);
 
 	projection = glm::perspective(
-		glm::radians(45.0f),
+		glm::radians(180.0f),
 		(float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
 		0.1f,
 		100.0f
@@ -96,7 +112,9 @@ void createAllTransformationsAndEnableQuadBuffer(Shader& shader, float ipd, floa
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	createViewMatrix(shader, ipd, false);
+	createHeadMatrix(shader, HEAD_POSITION, 0.0, glm::vec3(0.0, 0.0, 0.0));
 	createModelMatrices(shader, positions, axes);
+	createProjectionMatrix(shader);
 
 	glFlush();
 
@@ -105,7 +123,9 @@ void createAllTransformationsAndEnableQuadBuffer(Shader& shader, float ipd, floa
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	createViewMatrix(shader, ipd, true);
+	createHeadMatrix(shader, HEAD_POSITION, 0.0, glm::vec3(0.0, 0.0, 0.0));
 	createModelMatrices(shader, positions, axes);
+	createProjectionMatrix(shader);
 
 	glFlush();
 }
@@ -151,7 +171,10 @@ int main() {
 	std::cout << "vendor: " << vendor << std::endl;
 	std::cout << "renderer: " << renderer << std::endl;
 
-	glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
+	if(RENDER_TOP_HALF) glViewport(0, SCREEN_HEIGHT / 2, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+	else glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT / 2);
+
+	//glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
 	glfwSetMouseButtonCallback(window, mouse_button_callback);
 	//glfwSetCursorPosCallback(window, cursor_position_callback);
 	glfwSetKeyCallback(window, key_callback);
@@ -176,6 +199,9 @@ int main() {
 	glEnableVertexAttribArray(1);
 
 	glEnable(GL_DEPTH_TEST);
+
+	int width, height, nrChannels;
+	unsigned char* texImageData = stbi_load("block.png", &width, &height, &nrChannels, 0);
 
 	std::random_device rd;
 	std::mt19937 engine(rd());
