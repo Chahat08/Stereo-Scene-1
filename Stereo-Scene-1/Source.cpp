@@ -24,10 +24,10 @@ float FOV = 0.0f;
 int CURSOR_XPOS = INT_MIN;
 int CURSOR_YPOS = INT_MIN;
 
-int NUM_CUBES = 16;
+int NUM_CUBES = 1;
 
 const float IPD = 0.5f; // 0.065
-glm::vec3 HEAD_POSITION = glm::vec3(0.0, 0.0, -0.75); // let the head be 0.75 m from the screen
+glm::vec3 HEAD_POSITION = glm::vec3(0.0, 0.0, -6.0f); // let the head be 0.75 m from the screen
 const bool RENDER_TOP_HALF = true;
 
 void framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
@@ -65,7 +65,7 @@ void processInput(GLFWwindow* window) {
 void createModelMatrices(Shader& shader, std::vector<glm::vec3> positions, std::vector<glm::vec3> axes) {
 	for (int i = 0; i < 1; ++i) {
 		glm::mat4 model(1.0f);
-		model = glm::translate(model, glm::vec3(0.0, 0.0, 10.0));
+		model = glm::translate(model, glm::vec3(0.0, 0.0, -10.5f));
 		//model = glm::rotate(model, (float)glfwGetTime(), axes[i]);
 
 		shader.setUniformMatrix4float("model", model);
@@ -76,8 +76,8 @@ void createModelMatrices(Shader& shader, std::vector<glm::vec3> positions, std::
 float camX = 0.0f, camZ = 0.0f;
 void createViewMatrix(Shader& shader, float ipd, bool rightEye = false) {
 	const float radius = 100.0f;
-	camX = sin(glfwGetTime()) * radius + (rightEye ? ipd / 2.0 : -ipd / 2.0);
-	camZ = cos(glfwGetTime()) * radius;
+	//camX = sin(glfwGetTime()) * radius + (rightEye ? ipd / 2.0 : -ipd / 2.0);
+	//camZ = cos(glfwGetTime()) * radius;
 	glm::mat4 view(1.0f);
 	view = glm::lookAt(
 		glm::vec3(0.0f, 0.0f, -1.0f),
@@ -90,9 +90,9 @@ void createViewMatrix(Shader& shader, float ipd, bool rightEye = false) {
 void createHeadMatrix(Shader& shader, glm::vec3 translation, const float rotationAngle, glm::vec3 rotationAxis) {
 	glm::mat4 head(1.0f);
 
-	//head = glm::lookAt(HEAD_POSITION, 
-	//	glm::vec3(camX, 0.0f, camZ), 
-	//	glm::vec3(0.0f, 1.0f, 0.0f));
+	head = glm::lookAt(HEAD_POSITION, 
+		glm::vec3(0.0f, 0.0f, 0.0f),
+		glm::vec3(0.0f, 1.0f, 0.0f));
 
 	shader.setUniformMatrix4float("head", head);
 }
@@ -100,7 +100,7 @@ void createHeadMatrix(Shader& shader, glm::vec3 translation, const float rotatio
 void createProjectionMatrix(Shader& shader, float near = 0.5f, float far = 100.0f, float fovDeg = 45.0f) {
 	glm::mat4 projection(1.0f);
 
-	float fov = glm::radians(2 * atan(SCREEN_DIMENSION_HEIGHT / (2 * 1.0f)));
+	float fov = 2 * atan(SCREEN_DIMENSION_HEIGHT / (2 * 6.0f));
 	projection = glm::perspective(
 		fov,
 		(float)SCREEN_WIDTH / (float)SCREEN_HEIGHT,
@@ -108,7 +108,7 @@ void createProjectionMatrix(Shader& shader, float near = 0.5f, float far = 100.0
 		100.0f
 	);
 
-	std::cout << fov <<", "<<SCREEN_HEIGHT << std::endl;
+	std::cout << glm::degrees(fov) <<", "<<SCREEN_HEIGHT << std::endl;
 
 	//projection = glm::frustum(
 
@@ -155,7 +155,7 @@ int main(int argc, char* argv[]) {
 
 	//glfwWindowHint(GLFW_DECORATED, NULL); // to remove border and titlebar
 
-	glfwWindowHint(GLFW_STEREO, GLFW_TRUE);
+	// glfwWindowHint(GLFW_STEREO, GLFW_TRUE);
 
 	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 	const GLFWvidmode* mode = glfwGetVideoMode(monitor);
@@ -166,6 +166,8 @@ int main(int argc, char* argv[]) {
 	SCREEN_WIDTH = std::stoi(argv[1]);
 	SCREEN_HEIGHT = std::stoi(argv[2]);
 	SCREEN_DIMENSION_HEIGHT = std::stof(argv[3]);
+
+	std::cout << SCREEN_WIDTH << ", " << SCREEN_HEIGHT << std::endl;
 
 	GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Title", NULL, NULL);
 	//GLFWwindow* window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Title", NULL, NULL);
@@ -218,21 +220,14 @@ int main(int argc, char* argv[]) {
 	glEnable(GL_DEPTH_TEST);
 
 	int width, height, nrChannels;
-	unsigned char* texImageData = stbi_load("block.png", &width, &height, &nrChannels, 0);
+	unsigned char* texImageData = stbi_load("block.jpg", &width, &height, &nrChannels, 0);
 
-	// MAKE MOVING CUBE SCENE
-
-	std::random_device rd;
-	std::mt19937 engine(rd());
-	std::uniform_real_distribution<> distribution_xy(-5.0, 5.0);
-	std::uniform_real_distribution<> distribution_z(-5.0, 5.0);
-	std::uniform_real_distribution<> distribution_axes(-2, 2);
 
 	std::vector<glm::vec3> positions, axes;
 
 	for (int i = 0; i < NUM_CUBES; ++i) {
-		positions.push_back(glm::vec3(distribution_xy(engine), distribution_xy(engine), distribution_z(engine)));
-		axes.push_back(glm::vec3(distribution_axes(engine), distribution_axes(engine), distribution_axes(engine)));
+		positions.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+		axes.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
 	}
 
 	int frame = 0;
@@ -246,7 +241,7 @@ int main(int argc, char* argv[]) {
 		shader.use();
 		glBindVertexArray(VAO);
 
-		createAllTransformationsAndEnableQuadBuffer(shader, IPD, 0.1f, 100.0f, 45.0, positions, axes);
+		createAllTransformationsAndEnableQuadBuffer(shader, IPD, 0.1f, 1.0f, 45.0, positions, axes);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
